@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Sacred Archive</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=IM+Fell+English:ital@0;1&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dark: #050506;
+            --accent: #c5a059;
+            --paper: #e9e2d0;
+            --ink: #1b1b1b;
+        }
+
+        body { 
+            background-color: var(--dark); 
+            color: #94a3b8; 
+            font-family: 'Playfair Display', serif; 
+            margin: 0;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .cinzel { font-family: 'Cinzel', serif; }
+        .fell-english { font-family: 'IM Fell English', serif; }
+        .garamond { font-family: 'EB Garamond', serif; }
+
+        .manuscript-card {
+            background: #0a0a0c;
+            border: 1px solid #1e293b;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .manuscript-card:hover {
+            border-color: var(--accent);
+            background: #0f172a;
+            transform: translateY(-4px);
+        }
+
+        .reader-sanctum {
+            display: none; position: fixed; inset: 0; z-index: 100;
+            background: #000; overflow-y: auto;
+        }
+
+        /* High-DPI Book Effect */
+        .parchment {
+            background-color: var(--paper);
+            background-image: 
+                linear-gradient(to right, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0) 5%, rgba(0,0,0,0) 95%, rgba(0,0,0,0.05) 100%),
+                url("https://www.transparenttextures.com/patterns/natural-paper.png");
+            color: var(--ink);
+            box-shadow: 0 30px 60px -12px rgba(0,0,0,0.5), 0 18px 36px -18px rgba(0,0,0,0.5);
+            border-radius: 4px;
+            position: relative;
+            max-width: 850px;
+            margin: 0 auto;
+        }
+
+        /* Book Spine Effect */
+        .parchment::before {
+            content: "";
+            position: absolute;
+            top: 0; bottom: 0; left: 50%;
+            width: 1px;
+            background: linear-gradient(to right, transparent, rgba(0,0,0,0.1), transparent);
+            pointer-events: none;
+        }
+
+        .filter-btn {
+            border: 1px solid #1e293b;
+            padding: 8px 16px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .filter-btn.active { background: #1e293b; color: var(--accent); border-color: var(--accent); }
+
+        .story-content {
+            font-size: 1.25rem;
+            line-height: 1.85;
+            text-align: justify;
+            hyphens: auto;
+        }
+
+        .story-content p { 
+            margin-bottom: 1.5rem; 
+            text-indent: 2rem;
+        }
+
+        .story-content p:first-of-type {
+            text-indent: 0;
+        }
+
+        /* Better Headline Design */
+        .manuscript-header h2 {
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            line-height: 1.2;
+            color: #1a1a1a;
+            border-bottom: 2px double rgba(0,0,0,0.1);
+            display: inline-block;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .drop-cap::first-letter {
+            float: left;
+            font-family: 'Cinzel', serif;
+            font-size: 4.5rem;
+            line-height: 0.8;
+            padding: 0.5rem 0.8rem 0 0;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .story-content { font-size: 1.1rem; line-height: 1.7; text-align: left; }
+            .parchment { padding: 2rem 1.5rem !important; }
+        }
+    </style>
+</head>
+<body class="pb-24">
+
+    <header class="py-16 px-6 text-center">
+        <h1 class="cinzel text-3xl md:text-5xl text-amber-50 tracking-[0.4em] uppercase mb-10 font-black">The Sacred Archive</h1>
+        <div class="max-w-2xl mx-auto space-y-6">
+            <input type="text" id="search-input" placeholder="Search the collection..." 
+                class="w-full bg-black/50 border border-slate-800 rounded-none py-4 px-8 text-amber-50 focus:outline-none focus:border-amber-700 text-center cinzel text-sm">
+            
+            <div id="genres" class="flex flex-wrap justify-center gap-3 cinzel">
+                <div class="filter-btn active" data-q="gothic">Gothic</div>
+                <div class="filter-btn" data-q="supernatural">Ancient</div>
+                <div class="filter-btn" data-q="mystery">Mystery</div>
+                <div class="filter-btn" data-q="myth">Mythology</div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+        <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"></div>
+        <div class="mt-20 text-center">
+            <button id="load-more" class="hidden cinzel text-amber-200/60 border border-slate-800 px-12 py-4 uppercase text-[10px] tracking-widest hover:border-amber-700">Retrieve More Volumes</button>
+            <div id="spinner" class="hidden py-10 flex justify-center"><div class="w-8 h-8 border-2 border-amber-900 border-t-amber-500 rounded-full animate-spin"></div></div>
+        </div>
+    </main>
+
+    <div id="reader" class="reader-sanctum py-8 md:py-24 px-4 bg-[#0a0a0a]">
+        <div class="max-w-4xl mx-auto">
+            <div class="flex justify-between items-center mb-10 cinzel text-amber-100/40 text-[10px] uppercase tracking-widest px-4">
+                <button onclick="closeReader()" class="hover:text-amber-200 transition-colors flex items-center gap-2">
+                    <span class="text-lg">✕</span> Exit Archive
+                </button>
+                <span id="tracker" class="font-bold">Fragment I</span>
+            </div>
+
+            <article class="parchment p-12 md:p-24 relative min-h-[85vh]">
+                <div id="manuscript-view" class="garamond"></div>
+                
+                <nav id="pagination" class="mt-24 flex justify-between items-center border-t border-black/10 pt-12 cinzel text-[11px] uppercase hidden font-bold">
+                    <button id="btn-prev" onclick="changePage(-1)" class="hover:text-amber-700 disabled:invisible transition-all">← Prev Fragment</button>
+                    <div class="h-8 w-[1px] bg-black/5 hidden md:block"></div>
+                    <button id="btn-next" onclick="changePage(1)" class="hover:text-amber-700 disabled:invisible transition-all">Next Fragment →</button>
+                </nav>
+            </article>
+            
+            <div class="text-center mt-12 mb-20 opacity-20 cinzel text-[9px] tracking-[0.5em] uppercase text-white">
+                Property of the Sacred Archive — Digitized Manuscript
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const PROXIES = [
+            "https://corsproxy.io/?",
+            "https://api.allorigins.win/raw?url="
+        ];
+        
+        let state = {
+            books: [],
+            chunks: [],
+            pos: 0,
+            next: '',
+            q: 'gothic'
+        };
+
+        window.onload = () => {
+            loadList(`https://gutendex.com/books?search=gothic`);
+            
+            let debounce;
+            document.getElementById('search-input').oninput = (e) => {
+                clearTimeout(debounce);
+                debounce = setTimeout(() => {
+                    loadList(`https://gutendex.com/books?search=${encodeURIComponent(e.target.value || state.q)}`, true);
+                }, 800);
+            };
+
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.onclick = () => {
+                    document.querySelectorAll('.filter-btn').forEach(c => c.classList.remove('active'));
+                    b.classList.add('active');
+                    state.q = b.dataset.q;
+                    loadList(`https://gutendex.com/books?search=${state.q}`, true);
+                };
+            });
+
+            document.getElementById('load-more').onclick = () => { if(state.next) loadList(state.next); };
+        };
+
+        async function loadList(url, reset = false) {
+            document.getElementById('spinner').classList.remove('hidden');
+            document.getElementById('load-more').classList.add('hidden');
+
+            try {
+                const r = await fetch(url);
+                const d = await r.json();
+                state.next = d.next;
+                if(reset) {
+                    state.books = d.results;
+                    document.getElementById('grid').innerHTML = '';
+                } else {
+                    state.books = [...state.books, ...d.results];
+                }
+                renderGrid(d.results);
+                if(state.next) document.getElementById('load-more').classList.remove('hidden');
+            } finally {
+                document.getElementById('spinner').classList.add('hidden');
+            }
+        }
+
+        function renderGrid(list) {
+            const g = document.getElementById('grid');
+            list.forEach(v => {
+                const ok = Object.keys(v.formats).some(f => f.includes('text/plain') || f.includes('text/html'));
+                const c = document.createElement('div');
+                c.className = `manuscript-card p-10 cursor-pointer flex flex-col justify-between h-80 ${!ok ? 'opacity-10 pointer-events-none' : ''}`;
+                c.onclick = () => openBook(v);
+                c.innerHTML = `
+                    <div>
+                        <div class="text-[9px] cinzel text-amber-900 mb-6 tracking-widest uppercase font-bold">Volume ${v.id}</div>
+                        <h3 class="cinzel text-amber-50 text-xl leading-tight line-clamp-3 font-bold">${v.title}</h3>
+                        <p class="fell-english italic text-slate-500 text-sm mt-4">${v.authors[0]?.name || 'Unknown'}</p>
+                    </div>
+                `;
+                g.appendChild(c);
+            });
+        }
+
+        async function openBook(v) {
+            const r = document.getElementById('reader');
+            const vport = document.getElementById('manuscript-view');
+            r.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            vport.innerHTML = '<div class="py-32 text-center cinzel text-xs tracking-[0.3em] opacity-30 animate-pulse">Decrypting Manuscript...</div>';
+            
+            const rawUrl = v.formats['text/plain; charset=utf-8'] || v.formats['text/plain'] || v.formats['text/html'];
+            const mirrors = [
+                rawUrl,
+                `https://www.gutenberg.org/cache/epub/${v.id}/pg${v.id}.txt`,
+                `https://www.gutenberg.org/files/${v.id}/${v.id}-0.txt`
+            ];
+
+            let text = "";
+            let success = false;
+
+            for (let m of mirrors) {
+                if (!m) continue;
+                for (let p of PROXIES) {
+                    try {
+                        const res = await fetch(p + encodeURIComponent(m));
+                        const raw = await res.text();
+                        if (raw.length > 5000 && !raw.includes("not have the page you requested") && !raw.includes("403 Forbidden")) {
+                            text = raw;
+                            success = true;
+                            break;
+                        }
+                    } catch (e) {}
+                }
+                if (success) break;
+            }
+
+            if (!success) {
+                vport.innerHTML = `<div class="py-32 text-center cinzel"><p class="text-amber-900 text-lg">Fragment Unreadable</p><p class="text-[10px] opacity-40 mt-6 tracking-widest uppercase">Access to this specific scroll is currently restricted.</p></div>`;
+                return;
+            }
+
+            if (text.includes("<body")) {
+                const doc = new DOMParser().parseFromString(text, 'text/html');
+                text = doc.body.innerText;
+            }
+
+            let lines = text.split('\n');
+            let startIdx = 0;
+            const startMarker = lines.findIndex(l => l.includes("*** START OF"));
+            startIdx = startMarker !== -1 ? startMarker + 1 : 80;
+            
+            const endMarker = lines.findIndex(l => l.includes("*** END OF"));
+            let cleanLines = lines.slice(startIdx, endMarker !== -1 ? endMarker : lines.length - 100);
+
+            let cleanText = cleanLines.join('\n');
+            const forbidden = [/Project Gutenberg/gi, /www\.gutenberg\.org/gi, /United States/gi, /online at/gi, /eBook/gi, /License/gi, /Contact Information/gi];
+            forbidden.forEach(regex => cleanText = cleanText.replace(regex, "The Archive"));
+
+            // Fragment into smaller chunks for the book view
+            state.chunks = cleanText.match(/.{1,9000}(\s|$)/gs) || [cleanText];
+            state.pos = 0;
+            state.activeTitle = v.title;
+            
+            renderChunk();
+            document.getElementById('pagination').classList.remove('hidden');
+        }
+
+        function renderChunk() {
+            const vport = document.getElementById('manuscript-view');
+            const text = state.chunks[state.pos];
+            
+            const paragraphs = text.split(/\n\s*\n/).map(p => {
+                const clean = p.trim().replace(/\n/g, ' ');
+                if (clean.includes("not have the page you requested") || clean.includes("Contact Information")) return "";
+                return clean ? `<div>${clean}</div>` : '';
+            }).filter(p => p !== '').map((p, idx) => {
+                // Wrap in paragraph tag with drop cap for first paragraph of chunk
+                if (idx === 0) return `<p class="drop-cap">${p.replace('<div>', '').replace('</div>', '')}</p>`;
+                return `<p>${p.replace('<div>', '').replace('</div>', '')}</p>`;
+            }).join('');
+
+            vport.innerHTML = `
+                <div class="manuscript-header text-center mb-16">
+                    <h2 class="cinzel text-3xl uppercase garamond font-bold">${state.activeTitle}</h2>
+                    <p class="text-[10px] cinzel opacity-40 tracking-[0.6em] mt-4 uppercase">Archive Manuscript Segment ${state.pos + 1}</p>
+                </div>
+                <div class="story-content garamond text-stone-900">${paragraphs}</div>
+            `;
+            
+            document.getElementById('tracker').innerText = `Fragment ${state.pos + 1} / ${state.chunks.length}`;
+            document.getElementById('btn-prev').disabled = state.pos === 0;
+            document.getElementById('btn-next').disabled = state.pos === state.chunks.length - 1;
+            document.getElementById('reader').scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function changePage(d) { state.pos += d; renderChunk(); }
+        function closeReader() { document.getElementById('reader').style.display = 'none'; document.body.style.overflow = 'auto'; }
+    </script>
+</body>
+</html>
